@@ -7,6 +7,9 @@
 Changelog
 ---------
 .. versionadded::    23.10
+        🏭 Reformata puzzle com cena automática (05).
+        🔨 fix lançamento do texto, not yet (04).
+        ⛲ Desiste de Missões (03).
         🏅 Inclui medalhas no inventário (02).
         ⁉️ Incluir Questões de texto (01).
 
@@ -36,7 +39,7 @@ SEP = "_"
 One = ntp("One", "d f a i s h h1")
 Two = ntp("Two", "p b hd sc fm fs ip lg lb ft")
 W, H = 1350, 650
-LOG_LEVEL = 4
+LOG_LEVEL = 7
 IMGSIZE, IMG_HEIGHT = f"{32 * W}px", f"{4 * H}px"
 # noinspection SpellCheckingInspection
 A2J = "abcdefghij".upper()
@@ -50,7 +53,7 @@ class Log:
         print(*args) if level > self.min_level else None
 
 
-LG = Log(4)
+LG = Log(LOG_LEVEL)
 
 
 class Teclemmino:
@@ -85,26 +88,31 @@ class Teclemmino:
                 return dict(img_=self.img, style_=self.style, dim_=self.dim)
 
         class Sprite(vito.Elemento):
-            def __init__(self, img="", vai=None, style=NDCT, tit="", alt="",
+            def __init__(self, img="", vai=NADA.vai, style=NDCT, tit="", alt="",
                          x=0, y=0, w=100, h=100, o=1, texto='', foi=None, sw=100, sh=100, b=0, s=1,
-                         cena="", score=NDCT, drag=False, drop=NDCT, tipo="100% 100%", **kwargs):
+                         cena=NADA, score=NDCT, drag=False, drop=NDCT, tipo="100% 100%", **kwargs):
                 _style = style
                 from copy import deepcopy
-                self.img_ = deepcopy(img)if isinstance(img, dict) else img
+                self.img_ = deepcopy(img) if isinstance(img, dict) else img
                 style_ = {}
+                # txt = _kwa["texto"] if "texto" in _kwa else {}
+
+                LG.log(8, "Vito ⇒ Sprite texto⇒", type(texto), isinstance(texto, dict))
+
                 def to_int(key):
-                    LG.log (4,_style)
+                    LG.log(4, _style)
                     return [int(cdd[:-1]) for cdd in _style[key].split()]
+
                 gone = foi() if callable(foi) else foi
                 _ = score, drag, drop, tipo
                 img_, _style, _dim = [v for v in img.values()] if isinstance(img, dict) else (img, {}, D11)
                 if _style:
                     (ox, oy), (dx, dy) = to_int("backgroundPosition"), to_int("background-size")
                     style_["backgroundPosition"] = f"{-ox / 100 * w}px {-oy / 100 * h}px"
-                    style_["background-size"] = f"{dx/100*w}px {dy/100*h}px"
+                    style_["background-size"] = f"{dx / 100 * w}px {dy / 100 * h}px"
 
                 style = dict(width=f"{w}px", height=f"{h}px", overflow="hidden", filter=f"blur({b}px)", scale=s)
-                LG.log (4,style)
+                LG.log(4, style)
                 style.update(**style_)
                 style.update(**{"background-image": f"url({img_})"})
                 # noinspection PyCallingNonCallable
@@ -120,7 +128,10 @@ class Teclemmino:
                     icon = teclemmino.I(Class=img[1:], style={"position": "relative", "color": "grey"})
                     _ = self.elt <= icon
                 # self._texto = Texto(texto, foi=self._foi) if texto else None
-                self._texto = Texto(texto, foi=gone) if texto else None
+                if isinstance(texto, dict):
+                    self._texto = Texto(foi=gone, **texto)
+                else:
+                    self._texto = Texto(texto, foi=gone) if texto else None
                 self.vai = self._texto.vai if texto else self.vai
                 self.o = self.o_ = o
 
@@ -138,6 +149,7 @@ class Teclemmino:
         class CenaSprite(vito.Cena):
             def __init__(self, img, index=-1, direita="", **kwargs):
                 style_ = {"background-size": f"{8 * 100}% {8 * 100}%"}
+                self.foi_evs = []
 
                 img_, _style, _dim = [v for v in img.values()] if isinstance(img, dict) else (img, style_, D11)
                 # style = dict(width=f"{W}px", height=f"{H}px", overflow="hidden", backgroundImage=f"url({img_})")
@@ -149,10 +161,25 @@ class Teclemmino:
 
                 super().__init__("", **kwargs)
                 self.nome = kwargs["nome"] if "nome" in kwargs else img_
-                self.portal(L=teclemmino.parser(direita)) if direita else None
 
                 self.elt.html = ""
                 self.elt.style = style
+                if direita:
+                    ptl = self.portal(L=teclemmino.parser(direita)())
+                    LG.log(4, "CenaSprite direita", direita, self.nome, ptl)
+
+            def bind(self, ev=None):
+                self.foi_evs.append(ev) if ev not in self.foi_evs else None
+
+            def vai(self, ev=NoEv):
+                super().vai(ev)
+                teclemmino.mark(".".join(self.nome.split("zz")[-2:]))
+                LG.log(4, "CenaSprite vai", self.nome, teclemmino.vito.INV.cena.nome)
+                [foi(ev) for foi in self.foi_evs if callable(foi)]
+                ...
+
+            def __call__(self, *args, **kwargs):
+                return self
 
             def parse(self, ref, *_):
                 _ = self
@@ -169,7 +196,8 @@ class Teclemmino:
                 _index = enumerate([all_images[ix * 4:ix * 4 + 4] for ix in range(dx * dy)])
                 # self.salas = salas if salas else self.build_rooms
                 self.nome = _name = kwargs["nome"]
-                _salas = [teclemmino.sprite_sala(f"{_name}zz{ii}", img=img, index=ix) for ii, ix in _index]
+                self.salas = _salas = [
+                    teclemmino.sprite_sala(f"{_name}zz{ii}", img=img, index=ix) for ii, ix in _index]
                 self.matrix: List[SpriteSala]
                 self.matrix = [None] * xdx
                 _matrix = [[None] + _salas[ix:ix + self.index.dx] + [None] for ix in range(0, dx * dy, dx)] + [
@@ -177,6 +205,9 @@ class Teclemmino:
                 _ = [self.matrix.extend(row) for row in _matrix]
                 LG.log(4, "SpriteLabirinto", img, self.matrix)
                 self.lb()
+
+            def vai(self, *_):
+                self.salas[0].norte.vai()
 
             def get(self, jj, kk=-1):
                 result = f"{self.nome}zz{jj}" if kk < 0 else f"{self.nome}zz{jj}zz{kk}"
@@ -189,7 +220,7 @@ class Teclemmino:
                 winds = [-xdx, 1, xdx, -1]
                 for index_sala in range(xdx + 1, xdx + xdx * dy - 1):
                     for wind, winder in enumerate(winds):
-                        LG.log(3,"for wind, winder ", index_sala + winder, len(self.matrix))
+                        LG.log(3, "for wind, winder ", index_sala + winder, len(self.matrix))
                         origin, destination = self.matrix[index_sala], self.matrix[index_sala + winder]
                         if origin and destination:
                             origin.cenas[wind].portal(N=destination.cenas[wind])
@@ -242,15 +273,15 @@ class Teclemmino:
                         self.engage = self.dismiss = self.close = lambda *_: None
 
                     def option(self, _txt):
-                        rd, qu, ct, fi, it= "radio question control field is-info".split()
+                        rd, qu, ct, fi, it = "radio question control field is-info".split()
                         d, f, a, i, s, h, h1 = list(teclemmino.tag_one)
                         p, b, hd, sc, fm, fs, ip, lg, lb, ft = list(teclemmino.tag_two)
                         if _txt:
                             k, v = _txt.pop(0)
                         else:
                             return ""
-                        circled = {k: v for k, v in zip(A2J,"ⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿ")}
-                        res = d(d(lb(i_rad:=ip(id=f"_radio_{k}", type=rd, name=qu), Class=rd)+
+                        circled = {k: v for k, v in zip(A2J, "ⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿ")}
+                        res = d(d(lb(i_rad := ip(id=f"_radio_{k}", type=rd, name=qu), Class=rd) +
                                   f"\n{circled[k]} {v}", Class=ct), Class=fi)
                         self.radios.append(i_rad)
                         return res + self.option(_txt) if _txt else res
@@ -267,12 +298,12 @@ class Teclemmino:
                               sc(d(fm(
                                   fs(texter := lg(self.get_text())),
                                   Class="form-horizontal"), Class="content"), Class="modal-card-body") +
-                              # ft((eng := b("Entrar Aqui", Class=ii, id=eng)), Class="modal-card-foot"), Class="modal-card"),
+                              # ft((eng := b("Entrar Aqui", Class=ii, id=eng)), Class="modal-card-foot"), "modal-card"),
                               ft(
-                                  d(d(engage := b("Entrar Aqui", Class=ii, id=eng), Class="control")+
-                                  d(disengage := b("Cancela", Class=ig, id=dis), Class="control"),
-                                    Class= "field is-grouped"), Class="modal-card-foot mb-5")
-                              , Class="modal-card"),
+                                  d(d(engage := b("Entrar Aqui", Class=ii, id=eng), Class="control") +
+                                    d(disengage := b("Cancela", Class=ig, id=dis), Class="control"),
+                                    Class="field is-grouped"), Class="modal-card-foot mb-5"),
+                              Class="modal-card"),
                             Class="modal", id=mod)
                         closer.bind("click", self.close_modal)
                         disengage.bind("click", self.close_modal)
@@ -284,7 +315,7 @@ class Teclemmino:
                         ev.stopPropagation()
                         ev.preventDefault()
                         template = teclemmino.parser(template)
-                        LG.log(4,"template_modal", template)
+                        LG.log(5, "Teclemmino lModal ⇒ template_modal", template)
                         template()
                         self.unbind()
                         self.modal.classList.remove('is-active')
@@ -296,7 +327,8 @@ class Teclemmino:
                         self.template_modal(ev, template=self.close)
 
                     def engage_modal(self, ev):
-                        ok = [rd.checked for rd in self.radios if rd.id[-1] == self.answer] if self.questions else [True]
+                        ok = [rd.checked for rd in self.radios if rd.id[-1] == self.answer] if self.questions else [
+                            True]
                         na = [(rd.checked, rd.id[-1]) for rd in self.radios]
                         LG.log(4, "Teclemmino lModal ⇒ engage_modal", na, self.questions, self.answer, ok)
                         self.template_modal(ev, template=(self.engage if ok[-1] else self.dismiss))
@@ -305,13 +337,16 @@ class Teclemmino:
                         self.template_modal(ev, template=self.dismiss)
 
                     def mostra(self):  # , tit="", txt="", act=None, **kwargs):
+                        modal = teclemmino.vito.document["bbb"]
+                        modal.classList.add('is-active')
                         self.modal.classList.add('is-active')
                         self.texter.text = self.textual
                         options = self.option(self.questions[:])
                         _ = (self.texter <= options) if options else None
-                        LG.log(4, "Teclemmino Modal ⇒ mostra", self.textual, self.questions, self.answer, kwargs )
+                        LG.log(5, "Teclemmino Modal ⇒ mostra", self.textual, self.questions, self.answer, kwargs)
 
                 self.cena = cena
+                cena.bind(self.vai_vai) if hasattr(cena, "bind") else None
                 self.pr = pr
                 super_text = self
                 self.kwargs = [(k, v) for k, v in kwargs.items()]
@@ -328,23 +363,28 @@ class Teclemmino:
             def nop(self):
                 pass
 
+            def vai_vai(self, ev=NoEv):
+                LG.log(5, " Modal ⇒ vai_vai", self.cena.nome, teclemmino.vito.INV.cena.nome, ev)
+                self.vai()  # if self.cena == teclemmino.vito.INV.cena else None
+                # self.mostra()
+
             def deploy(self, *_):
-                self.vai()
+                pass
 
             def esconde(self):
-                LG.log(6, "Teclemmino ⇒ Texto esconde", self.esconder, callable(self.esconder) and self.esconder())
+                LG.log(5, "Teclemmino ⇒ Texto esconde", self.esconder, callable(self.esconder) and self.esconder())
                 self.esconder.vai() if hasattr(self.esconder, "vai") else None
                 # noinspection PyTypeChecker
                 _vai = self.esconder() if callable(self.esconder) else teclemmino.parser(self.esconder)
                 #
                 _vai.vai() if hasattr(_vai, "vai") else None
-                teclemmino.premiar(self.pr, vito=vito, tit=self.txt) if self.pr>=0 else None
+                teclemmino.premiar(self.pr, vito=vito, tit=self.txt) if self.pr >= 0 else None
                 pass
 
             def mostra(self):  # , tit="", txt="", act=None, **kwargs):
                 self.modal.bind(self.esconde, self.nop, self.nop, self.tit, self.question, self.answer)
                 self.modal.mostra()  # classList.add('is-active')
-                LG.log(6, "Teclemmino Texto ⇒ mostra", self.question, self.tit)
+                LG.log(5, "Teclemmino Texto ⇒ mostra", self.question, self.tit)
 
             def vai(self, ev=NoEv()):
                 ev.stopPropagation()
@@ -352,18 +392,22 @@ class Teclemmino:
                 self.mostra()  # self.tit, self.txt, act=self.esconde)
                 return False
 
-
         class Puzzle(Sprite):
             def __init__(self, img="", x=100, y=100, w=900, h=500, foi="", pr=-1, **kwargs):
                 self.pr = pr
                 swap = self
                 cena = kwargs["cena"]
+                self.cena = kwargs["cena"] = cena = (
+                    CenaSprite(img=cena, direita=foi) if "dim" in kwargs else cena)
+                self.cena.nome = self.nome = str(foi)
                 was = foi
                 foi = teclemmino.parser(foi)
-                LG.log(4, "Puzzle(Sprite):", cena, cena(), was, foi)
                 img_, _style, _dim = [v for v in img.values()] if isinstance(img, dict) else (img, {}, D11)
-                dw, dh = _dim.dx, _dim.dy
+                dim = kwargs["dim"] if "dim" in kwargs else [_dim.dx, _dim.dy]
+                dw, dh = dim
+                LG.log(4, f"Puzzle(Sprite) foi {foi()}:", cena, cena() if callable(cena) else "#", was, dim, dw, dh)
                 super().__init__(img="", x=x, y=y, w=w, h=h, foi=foi, **kwargs)
+
                 class Peca(vito.Elemento):
                     def __init__(self, local, index):
                         self.local, self.index = local, index,
@@ -374,7 +418,7 @@ class Teclemmino:
                         """posição horizontal e vertical em pixels onde a peça será desenhada"""
                         px, py = index % dw * pw, index // dw * ph
                         """posição horizontal e vertical em pixels onde o desenho da peça está na imagem"""
-                        super().__init__(img_, x=lx, y=ly, w=pw, h=ph, drag=True, cena=cena()) #, **kwargs)
+                        super().__init__(img_, x=lx, y=ly, w=pw, h=ph, drag=True, cena=cena())  # , **kwargs)
                         """chama o construtor do Elemento Vitollino passando as informações necessárias"""
                         self.siz = (w, h)
                         """redimensiona a figura da imagem para o tamanho fornecido"""
@@ -408,11 +452,17 @@ class Teclemmino:
                         return str(self.index)
 
                 from random import shuffle
-                pecas = list(range(_dim.dx * _dim.dy))
+                pecas = list(range(dw * dh))
+                # pecas = list(range(_dim.dx * _dim.dy))
                 shuffle(pecas)
                 # Peca(0, 0)
                 self.pecas = [Peca(local, index) for local, index in enumerate(pecas)]
                 # self.venceu = venceu or j.n(cena, "Voce venceu!")
+
+            def parse(self, nome, *args):
+                puz = teclemmino.assets[nome]
+                LG.log(5, "Puzzle parse", nome, puz, *args)
+                return puz.cena
 
             def limpa(self):
                 [peca.elt.remove() for peca in self.pecas]
@@ -421,36 +471,51 @@ class Teclemmino:
                 resultado = all([peca.certo() for peca in self.pecas])
                 print(resultado)
                 self.vai() if resultado else None
-                teclemmino.premiar(self.pr, vito, tit=self.tit) if resultado and self.pr>=0 else None
+                teclemmino.premiar(self.pr, vito, tit=self.tit) if resultado and self.pr >= 0 else None
                 return resultado
 
         class Quiz:
-            def __init__(self,nome=None, **kwargs):
+            def __init__(self, nome=None, **kwargs):
                 self.quiz = kwargs
                 self.nome = nome
 
         class Mapa:
-            def __init__(self,nome=None, **kwargs):
-                def deploy(actor, local=(0,0), **kwa):
+            def __init__(self, nome=None, **kwargs):
+                def deploy(actor, local=(0, 0), **kwa):
                     _kwa = actor.copy()
                     local_ = mapa.get(*local)
                     _kwa.update(kwa)
-                    kwa_ = dict(x=100, y=100)
+                    kwa_ = dict(x=kwa["x"] if "x" in kwa else 100, y=100)
                     _kwa.update(**kwa_)
+                    _kwa.update(**dict(img=self.parser(kwa["img"]))) if "img" in kwa else None
+                    txt = _kwa["texto"] if "texto" in _kwa else {}
 
-                    LG.log(4, "Vito ⇒ Mapa deploy⇒", actor.img_, local, local_, _kwa)
-                    sprite = Sprite(cena=local_,**_kwa)
+                    LG.log(4, "Vito ⇒ Mapa deploy⇒", txt, _kwa["img"] if "img" in _kwa else 9999)
+                    # LG.log(8, "Vito ⇒ Mapa deploy⇒", actor.img_, type(txt), local, local_, _kwa)
+                    sprite = Sprite(cena=local_, **_kwa)
                     # sprite.o = 0.5
                     return sprite
-                mapa = teclemmino.assets[nome]
-                pool='bio atm xpr cli fri geo per enc sup des sal cai'.split()
+
+                self.mapa = mapa = teclemmino.assets[nome]
+                pool = 'bio atm xpr cli fri geo per enc sup des res cai jor kpa'.split()
                 act_pool = {k[0]: teclemmino.assets[f"m{k}"] for k in pool}
                 act_pool["w"] = teclemmino.assets["mcli"]
-                self.acts = [deploy(act_pool[key.lower()[0]], **ka) for key,ka in kwargs.items()]
-                LG.log(4, "Vito ⇒ Mapa ⇒", nome, mapa.get(1,0))
+                self.acts = [deploy(act_pool[key.lower()[0]], **ka) for key, ka in kwargs.items()]
+                LG.log(5, "Vito ⇒ Mapa ⇒", nome, mapa, kwargs)
 
-                ...
+            def vai(self, *_):
+                self.mapa.vai()
+
+            def parser(self, ref: str):
+                if isinstance(ref, str) and ref.startswith("."):
+                    _, _, repo, folha, ix, *_ = ref.split(".")
+                    LG.log(4, "Vito ⇒ Mapa parser⇒", repo, folha, ix, teclemmino.assets[repo][folha].get_image(ix))
+                    return teclemmino.assets[repo][folha].get_image(ix)
+                else:
+                    return ref
+
         self.vito = vito
+        self.rosa: Sprite
         self.assets = {}
         self.last = {}
         self.classes = (CenaSprite, Sprite, SpriteSala, Texto, Folha, SpriteLabirinto, Mapa, Puzzle, Quiz)
@@ -471,7 +536,7 @@ class Teclemmino:
         return {k: v for k, v in zip(['c', 'e', 't', 's', 'f', 'v', "i", "l", "m", "p", "q"], builder)}
 
     def premiar(self, asset, vito, tit="premiado"):
-        mdl = vito.Sprite(self.assets["CN"]["_BADGES"].get_image(asset), w=26, h=26, tit=tit,cena=vito.INV.cena)
+        mdl = vito.Sprite(self.assets["CN"]["_BADGES"].get_image(asset), w=30, h=30, tit=tit, cena=vito.INV.cena)
         vito.INV.bota(mdl)
 
     def cena(self, asset, **kwargs):
@@ -513,7 +578,7 @@ class Teclemmino:
         # self.assets[asset] = t = self.vito.Textor(nome=asset, one=self.tag_one, two=self.tag_two, **kwargs)
         self.assets[asset] = t = self.vito.Textor(nome=asset, **kwargs)
         t.deploy(self.vito.document.body)
-        LG.log(6, "Vito ⇒ texto", asset, t.kwargs, kwargs)
+        LG.log(5, "Vito ⇒ texto", asset, t.kwargs, kwargs)
         # logging.debug("Vito -> texto", asset, kwargs)
 
     def valor(self, asset, **value):
@@ -579,8 +644,13 @@ class Teclemmino:
         self.start_game_from_root_element()
         return True
 
+    def mark(self, coord):
+        self.rosa.elt.text = coord
     def start_game_from_root_element(self):
+        self.rosa = self.vito.Sprite("https://imgur.com/odmJe4Z.jpg", w=30, h=30, cena=self.vito.INV.cena)
+        self.vito.INV.bota(self.rosa)
         self.assets["ROOT"].vai() if "ROOT" in self.assets else None
+        self.mark("0.0")
 
 
 class Main:

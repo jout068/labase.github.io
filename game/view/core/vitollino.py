@@ -37,7 +37,7 @@ Changelog
 
 .. versionadded::    20.07
 	Fix Elemento x, y setters; add z function to Jogo
-	
+
 Descrição
 ---------
 
@@ -565,7 +565,7 @@ class Elemento(Elemento_):
         self.elt = html.DIV(Id=tit, title=tit, style=self.style)
         # self.elt.style = self.style
         self.xy = (-111, -111)
-        self.scorer = dict(ponto=1, valor=cena.nome, carta=tit or img, casa=self.xy, move=None)
+        self.scorer = dict(ponto=1, valor=cena.nome if cena else "_NADA_", carta=tit or img, casa=self.xy, move=None)
         self.scorer.update(score)
         # if False:
         #     self._img = html.IMG(Id="img_" + tit, src=img, title=tit, alt=alt,
@@ -631,7 +631,7 @@ class Elemento(Elemento_):
     @texto.setter
     def texto(self, tex):
         """Recebe o texto que o elemento deve falar
-        
+
             :param tex: texto que o elemento deve falar
         """
         self._texto = self._texto or Texto(self.cena, tex, foi=self._foi)
@@ -647,7 +647,7 @@ class Elemento(Elemento_):
     @siz.setter
     def siz(self, wh):
         """Recebe uma tupla de inteiros definindo o tamanho da imagem do elemento
-        
+
             :param wh: w - tamanho da imagem na horizontal a partir da esquerda
             :param hh: h - tamanho da imagem na vertical a partir do topo
         """
@@ -663,7 +663,7 @@ class Elemento(Elemento_):
     @pos.setter
     def pos(self, xy):
         """Recebe uma tupla de inteiros definindo a posição da imagem do elemento
-        
+
             :param xy: x - posição da imagem na horizontal a partir da esquerda
             :param xy: y - posição da imagem na vertical a partir do topo
         """
@@ -1210,6 +1210,7 @@ class Cena:
         score = {key: kwargs[key] if key in kwargs else value for key, value in self.scorer.items()}
         INVENTARIO.score(**score)
 
+
 def singleton(class_):
     instances = {}
 
@@ -1219,6 +1220,7 @@ def singleton(class_):
         return instances[class_]
 
     return getinstance
+
 
 @singleton
 class Pop:
@@ -2021,7 +2023,7 @@ h1 {
 
 
 def __setup__():
-    #document.head <= html.STYLE(CSS, type="text/css", media="screen")
+    # document.head <= html.STYLE(CSS, type="text/css", media="screen")
     Popup(Cena())
 
 
