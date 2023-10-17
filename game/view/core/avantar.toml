@@ -207,9 +207,9 @@ C="Acelerar o crescimento de novas espécies."
 Z="B"
 
 [mapa_LAND]
-p_exe =  {img=".i.PUZZLE.Peng.4.4", pr=1, foi=".i.ROOTzz0.0.0" , texto = "feito!", cena=".i.CN._LAND.1", dim=[4,4]}
+p_exe =  {img=".i.PUZZLE.Peng.4.4", pr=1, foi=".i.ROOTzz0.0.0" , texto = "Parabéns! Você conseguiu usar o sinalizador para pedir ajuda.", cena=".i.CN._LAND.1", dim=[4,4]}
 
-Gp = {local=[7,1], tit="exemplo", texto="Exemplo", foi = ".i.exe"}
+Jb = {local=[7,1], tit="Temos um problema", texto= {tit="Um navio encalhou na costa. Os pesquisadores estão tentando desencalhá-lo. Tem um tsunami se aproximando. Um helicóptero da Marinha está à caminho para resgatar as seis pessoas que estão no barco, mas o piloto não consegue avistar o navio. Os pesquisadores olham um sinalizador, um pedaço de madeira inflamável e um megafone. Qual equipamento devem utilizar?", A="Pedaço de madeira inflamávelº", B="Megafone", C="Sinalizador", Z="C" }, foi=".i.exe"}
 
 
 # Este é mapa principal onde o jogo inicia. Podemos colocar aqui uma carta para cada roteiro disponível
